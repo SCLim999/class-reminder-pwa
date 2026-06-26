@@ -106,6 +106,21 @@
   }
   .btn-reset:hover, .btn-reset:active { background: var(--border); color: var(--sub); }
 
+  /* Contrast (light) mode */
+  body.contrast {
+    --bg: #f8fafc; --surface: #ffffff; --border: #cbd5e1;
+    --text: #0f172a; --sub: #334155; --muted: #475569;
+    --blue: #1d4ed8; --blue-h: #1e40af;
+  }
+  body.contrast input[type="text"],
+  body.contrast input[type="number"] { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  body.contrast .card   { background: #ffffff; border-color: #e2e8f0; }
+  body.contrast code    { background: #f1f5f9; border-color: #cbd5e1; color: #1d4ed8; }
+  body.contrast .btn-reset { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+  body.contrast .header { background: #ffffff; border-bottom-color: #e2e8f0; }
+  body.contrast .page-title { color: #0f172a; }
+  body.contrast .back-btn { color: #1d4ed8; }
+
   /* Toast */
   .toast {
     position: fixed; bottom: calc(24px + env(safe-area-inset-bottom));

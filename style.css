@@ -335,6 +335,35 @@ body {
   text-align: center; color: #6a8090; font-size: 11px; margin-top: 8px;
 }
 
+/* ── Contrast (light) mode ── */
+body.contrast {
+  --bg:        #f8fafc;
+  --surface:   #ffffff;
+  --border:    #cbd5e1;
+  --text:      #0f172a;
+  --text-sub:  #334155;
+  --text-muted:#475569;
+  --blue:      #1d4ed8;
+  --blue-h:    #1e40af;
+}
+body.contrast .app-title    { color: #0f172a; }
+body.contrast .back-btn     { color: #1d4ed8; }
+body.contrast .back-btn:active { color: #1e40af; }
+body.contrast .badge        { background: #dbeafe; color: #1d4ed8; }
+body.contrast .badge.soon   { background: #fee2e2; color: #dc2626; }
+body.contrast .past-badge   { background: #f1f5f9; color: #64748b; }
+body.contrast .detail-badge             { background: #dbeafe; color: #1d4ed8; }
+body.contrast .detail-badge.tutorial   { background: #dcfce7; color: #15803d; }
+body.contrast .detail-badge.lab        { background: #f3e8ff; color: #7e22ce; }
+body.contrast .detail-badge.practical  { background: #ffedd5; color: #c2410c; }
+body.contrast .notif-banner { background: #dbeafe; border-color: #bfdbfe; color: #1e40af; }
+body.contrast .notif-btn    { background: #1d4ed8; }
+/* Keep overlay dark — it's a modal and needs to stand out */
+body.contrast .overlay-card {
+  background: linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%);
+  border-color: rgba(255,255,255,.12);
+}
+
 /* ── Utility ── */
 .hidden { display: none !important; }
 

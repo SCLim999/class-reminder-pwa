@@ -535,6 +535,31 @@ function showDetail(ev) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Contrast mode
+// ═════════════════════════════════════════════════════════════════════════════
+
+async function loadContrastMode() {
+  const settings = (await dbGet('settings')) || {};
+  applyContrast(!!settings.contrastMode);
+}
+
+function applyContrast(on) {
+  document.body.classList.toggle('contrast', on);
+  const btn = $('contrast-btn');
+  if (!btn) return;
+  btn.textContent = on ? '🌙' : '☀';
+  btn.title = on ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+}
+
+async function toggleContrast() {
+  const on = document.body.classList.toggle('contrast');
+  applyContrast(on);
+  const settings = (await dbGet('settings')) || {};
+  settings.contrastMode = on;
+  await dbSet('settings', settings);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Notifications
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -623,6 +648,7 @@ async function init() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadContrastMode();
   await registerSW();
   await init();
 
@@ -663,6 +689,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showReminderOverlay(reminder);
   });
 
+  $('contrast-btn').addEventListener('click', toggleContrast);
   $('overlay-dismiss-btn').addEventListener('click', closeReminderOverlay);
 
   $('notif-enable-btn').addEventListener('click', requestNotificationPermission);

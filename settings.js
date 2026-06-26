@@ -97,3 +97,5 @@ function showToast(msg) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('redirectUri').textContent = getAppRedirectUri();
 loadSettings();
+// Apply saved contrast mode
+dbGet('settings').then(s => { if (s?.contrastMode) document.body.classList.add('contrast'); });
