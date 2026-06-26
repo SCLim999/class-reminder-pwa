@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Classes">
+<meta name="theme-color" content="#1e293b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon128.png">
+<link rel="stylesheet" href="style.css">
+<title>Class Reminder</title>
+</head>
+<body>
+
+<!-- Notification permission banner -->
+<div id="notif-banner" class="notif-banner hidden">
+  <span>Enable notifications to get class reminders</span>
+  <button id="notif-enable-btn" class="notif-btn">Enable</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <img src="icons/icon128.png" alt="" class="logo">
+    <div>
+      <div class="app-title">Class Reminder</div>
+      <div class="app-sub" id="status-label">Loading...</div>
+    </div>
+  </div>
+  <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">⚙</button>
+</div>
+
+<!-- ── Setup view: no Client ID configured ── -->
+<div id="setup-view" class="view hidden">
+  <div class="empty-icon">⚙️</div>
+  <div class="empty-text">Configure your Google OAuth Client ID in Settings to get started.</div>
+  <button class="btn btn-primary" id="goto-settings-btn">Open Settings</button>
+</div>
+
+<!-- ── Auth view: signed out ── -->
+<div id="auth-view" class="view hidden">
+  <div class="empty-icon">🔑</div>
+  <div class="empty-text">Sign in with Google to connect your calendar.</div>
+  <button class="btn btn-primary" id="signin-btn">Sign in with Google</button>
+  <div class="note" id="auth-note"></div>
+</div>
+
+<!-- ── Classes view: main view ── -->
+<div id="classes-view" class="view hidden">
+  <div class="section-label">TODAY'S CLASSES</div>
+  <div id="classes-list"></div>
+  <div id="no-classes" class="empty hidden">
+    <div class="empty-icon">✅</div>
+    <div class="empty-text">No upcoming classes in the next 12 hours.</div>
+  </div>
+</div>
+
+<!-- ── Detail view: slides in over classes ── -->
+<div id="detail-view" class="view hidden slide-view">
+  <div class="detail-nav">
+    <button class="back-btn" id="back-btn">‹ Back</button>
+  </div>
+  <div class="detail-body">
+    <div class="detail-top">
+      <div class="detail-icon-wrap" id="detail-icon">📚</div>
+      <div>
+        <div class="detail-badge" id="detail-badge">LECTURE</div>
+        <div class="detail-title" id="detail-title">Class</div>
+      </div>
+    </div>
+    <div class="detail-rows">
+      <div class="detail-row" id="detail-time-row">
+        <span class="detail-row-icon">🕐</span>
+        <span id="detail-time">—</span>
+      </div>
+      <div class="detail-row" id="detail-countdown-row">
+        <span class="detail-row-icon">⏳</span>
+        <span id="detail-countdown">—</span>
+      </div>
+      <div class="detail-row hidden" id="detail-loc-row">
+        <span class="detail-row-icon">📍</span>
+        <span id="detail-loc">—</span>
+      </div>
+      <div class="detail-row hidden" id="detail-desc-row">
+        <span class="detail-row-icon">📝</span>
+        <span id="detail-desc">—</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="detail-preview-btn" style="margin-top:20px">Preview Reminder</button>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<div class="footer" id="footer">
+  <button class="link-btn" id="check-btn">Check now</button>
+  <span class="dot">·</span>
+  <button class="link-btn" id="test-btn">Test reminder</button>
+  <span class="dot">·</span>
+  <button class="link-btn" id="signout-btn">Sign out</button>
+</div>
+
+<!-- ── Reminder overlay (covers full screen) ── -->
+<div id="overlay" class="overlay hidden">
+  <div class="overlay-card" id="overlay-card">
+    <div class="overlay-top">
+      <div class="overlay-icon-wrap" id="overlay-icon">📚</div>
+      <div>
+        <div class="overlay-badge" id="overlay-badge">REMINDER</div>
+        <div class="overlay-title" id="overlay-title">Class</div>
+      </div>
+    </div>
+
+    <div class="overlay-meta">
+      <div class="overlay-meta-row" id="overlay-time-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity=".6">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="overlay-time">—</span>
+      </div>
+      <div class="overlay-meta-row hidden" id="overlay-loc-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity=".6">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span id="overlay-loc">—</span>
+      </div>
+    </div>
+
+    <div class="overlay-divider"></div>
+    <div class="overlay-starts-in">Class starts in</div>
+    <div class="overlay-countdown" id="overlay-countdown">—</div>
+    <div class="overlay-progress-track">
+      <div class="overlay-progress-fill" id="overlay-progress" style="width:100%"></div>
+    </div>
+
+    <button class="btn btn-dismiss" id="overlay-dismiss-btn">✕ Dismiss</button>
+    <div class="overlay-autoclose">Auto-closing in <span id="overlay-autotimer">30</span>s</div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
