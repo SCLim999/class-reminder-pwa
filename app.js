@@ -112,13 +112,19 @@ async function handleOAuthCallback() {
 
 async function signIn() {
   const settings = (await dbGet('settings')) || {};
-  if (!settings.clientId) {
+  const clientId = (settings.clientId || '').replace(/^https?:\/\//i, '').trim();
+
+  if (!clientId) {
     $('auth-note').textContent = 'Set your Client ID in Settings first.';
+    return;
+  }
+  if (!clientId.endsWith('.apps.googleusercontent.com')) {
+    $('auth-note').textContent = 'Client ID must end with .apps.googleusercontent.com — check Settings.';
     return;
   }
   const params = new URLSearchParams({
     response_type: 'token',
-    client_id:     settings.clientId,
+    client_id:     clientId,
     redirect_uri:  getRedirectUri(),
     scope:         'https://www.googleapis.com/auth/calendar.readonly',
     prompt:        'consent',

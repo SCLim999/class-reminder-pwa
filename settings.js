@@ -56,8 +56,13 @@ async function loadSettings() {
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 document.getElementById('saveBtn').addEventListener('click', async () => {
+  // Strip accidental http:// or https:// prefix from Client ID
+  const rawId = document.getElementById('clientId').value.trim();
+  const cleanId = rawId.replace(/^https?:\/\//i, '').trim();
+  document.getElementById('clientId').value = cleanId;
+
   const settings = {
-    clientId:  document.getElementById('clientId').value.trim(),
+    clientId:  cleanId,
     keywords:  document.getElementById('keywords').value.trim(),
     remind1:   parseInt(document.getElementById('remind1').value, 10)   || DEFAULTS.remind1,
     remind2:   parseInt(document.getElementById('remind2').value, 10)   || DEFAULTS.remind2,
