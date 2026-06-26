@@ -119,9 +119,14 @@ async function signIn() {
     return;
   }
   if (!clientId.endsWith('.apps.googleusercontent.com')) {
-    $('auth-note').textContent = 'Client ID must end with .apps.googleusercontent.com — check Settings.';
+    $('auth-note').textContent = `Invalid Client ID: "${clientId}" — must end with .apps.googleusercontent.com`;
     return;
   }
+
+  // Show what is being used so user can verify
+  $('auth-note').style.color = '#60a5fa';
+  $('auth-note').textContent = `Using: ${clientId.slice(0, 20)}...${clientId.slice(-30)}`;
+  await new Promise(r => setTimeout(r, 2500));
   const params = new URLSearchParams({
     response_type: 'token',
     client_id:     clientId,
