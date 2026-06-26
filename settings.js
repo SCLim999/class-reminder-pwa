@@ -40,8 +40,9 @@ const DEFAULTS = {
 
 // ── Redirect URI (this is what goes into Google Cloud Console) ────────────────
 function getAppRedirectUri() {
-  // Point to index.html regardless of which page we're on
-  return new URL('index.html', window.location.href).href.split('?')[0].split('#')[0];
+  // Always return the root path — avoids index.html vs / mismatch on GitHub Pages
+  const url = new URL('./', window.location.href).href.split('?')[0].split('#')[0];
+  return url.endsWith('/index.html') ? url.slice(0, -'index.html'.length) : url;
 }
 
 // ── Load saved settings ───────────────────────────────────────────────────────

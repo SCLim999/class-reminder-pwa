@@ -92,8 +92,9 @@ function classType(title) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function getRedirectUri() {
-  // Strip hash and query string to get the bare page URL
-  return window.location.href.split('#')[0].split('?')[0];
+  // Always use the root path — avoids index.html vs / mismatch on GitHub Pages
+  const url = window.location.href.split('#')[0].split('?')[0];
+  return url.endsWith('/index.html') ? url.slice(0, -'index.html'.length) : url;
 }
 
 async function handleOAuthCallback() {
