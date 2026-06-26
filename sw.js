@@ -3,7 +3,7 @@
  * Handles offline caching, periodic background calendar checks, and push notifications.
  */
 
-const CACHE_NAME = 'class-reminder-v1';
+const CACHE_NAME = 'class-reminder-v2';
 const STATIC_ASSETS = [
   './', './index.html', './style.css', './app.js',
   './settings.html', './settings.js',
