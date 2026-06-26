@@ -143,16 +143,55 @@ async function getToken() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Date navigation
+// ═════════════════════════════════════════════════════════════════════════════
+
+let _viewDate = new Date();
+_viewDate.setHours(0, 0, 0, 0);
+
+function viewDateOffset() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((_viewDate - today) / 86_400_000);
+}
+
+function updateDateNav() {
+  const offset = viewDateOffset();
+  const labels  = { '-1': 'Yesterday', '0': 'Today', '1': 'Tomorrow' };
+  const secLabels = { '-1': "YESTERDAY'S CLASSES", '0': "TODAY'S CLASSES", '1': "TOMORROW'S CLASSES" };
+
+  $('date-label').textContent = labels[offset] ??
+    _viewDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+
+  $('date-sub').textContent = offset === 0 ? '' :
+    _viewDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+  $('section-label').textContent = secLabels[offset] ??
+    _viewDate.toLocaleDateString([], { month: 'long', day: 'numeric' }).toUpperCase() + ' CLASSES';
+
+  // Disable prev beyond 7 days back, next beyond 7 days forward
+  $('prev-date-btn').disabled = offset <= -7;
+  $('next-date-btn').disabled = offset >= 7;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Calendar
 // ═════════════════════════════════════════════════════════════════════════════
 
-async function fetchEvents(token) {
+async function fetchEvents(token, targetDate = null) {
   const keywordList = await dbGet('keywordList');
   const keywords    = keywordList?.length ? keywordList : KEYWORDS_DEFAULT;
 
-  const now    = new Date();
-  const timeMin = now.toISOString();
-  const timeMax = new Date(now.getTime() + LOOK_AHEAD_HRS * 3_600_000).toISOString();
+  let timeMin, timeMax;
+  if (targetDate) {
+    const start = new Date(targetDate); start.setHours(0, 0, 0, 0);
+    const end   = new Date(targetDate); end.setHours(23, 59, 59, 999);
+    timeMin = start.toISOString();
+    timeMax = end.toISOString();
+  } else {
+    const now = new Date();
+    timeMin = now.toISOString();
+    timeMax = new Date(now.getTime() + LOOK_AHEAD_HRS * 3_600_000).toISOString();
+  }
 
   const url = `${CALENDAR_API}/calendars/primary/events?` + new URLSearchParams({
     timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '50',
@@ -347,13 +386,14 @@ function closeReminderOverlay() {
 
 let _badgeInterval = null;
 
-async function loadClasses(token) {
+async function loadClasses(token, targetDate = null) {
   const list = $('classes-list');
   list.innerHTML = '<div class="loading">Loading...</div>';
   $('no-classes').classList.add('hidden');
+  updateDateNav();
 
   try {
-    const events = await fetchEvents(token);
+    const events = await fetchEvents(token, targetDate);
     list.innerHTML = '';
 
     if (events.length === 0) {
@@ -377,10 +417,14 @@ async function loadClasses(token) {
         }
       }
 
-      const badgeHtml = startRaw ? `<span class="badge" data-start="${startRaw}"></span>` : '';
+      const isPast = startRaw && new Date(startRaw) < new Date();
+      const badgeHtml = startRaw
+        ? isPast ? `<span class="badge past-badge">Done</span>`
+                 : `<span class="badge" data-start="${startRaw}"></span>`
+        : '';
 
       const card = document.createElement('div');
-      card.className = `class-card ${type}`;
+      card.className = `class-card ${type}${isPast ? ' past' : ''}`;
       card.innerHTML = `
         <div class="card-dot"></div>
         <div style="flex:1;min-width:0">
@@ -566,7 +610,7 @@ async function init() {
   showView('classes-view');
   updateNotifBanner();
 
-  await loadClasses(tokenData.access_token);
+  await loadClasses(tokenData.access_token, _viewDate);
   startPolling();
 
   // Show any pending reminder (e.g. from SW notification tap)
@@ -588,11 +632,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('settings-btn').addEventListener('click', () => { window.location.href = 'settings.html'; });
   $('goto-settings-btn').addEventListener('click', () => { window.location.href = 'settings.html'; });
 
+  $('prev-date-btn').addEventListener('click', async () => {
+    _viewDate.setDate(_viewDate.getDate() - 1);
+    const token = await getToken();
+    if (token) await loadClasses(token, _viewDate);
+  });
+
+  $('next-date-btn').addEventListener('click', async () => {
+    _viewDate.setDate(_viewDate.getDate() + 1);
+    const token = await getToken();
+    if (token) await loadClasses(token, _viewDate);
+  });
+
   $('check-btn').addEventListener('click', async () => {
     $('check-btn').textContent = 'Checking…';
     await checkAndRemind();
     const token = await getToken();
-    if (token) await loadClasses(token);
+    if (token) await loadClasses(token, _viewDate);
     $('check-btn').textContent = 'Check now';
   });
 
@@ -616,7 +672,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (document.hidden) return;
     const token = await getToken();
     if (token) {
-      await loadClasses(token);
+      await loadClasses(token, _viewDate);
       await checkAndRemind();
     }
     const pending = await dbGet('pendingReminder');

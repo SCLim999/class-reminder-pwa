@@ -50,7 +50,15 @@
 
 <!-- ── Classes view: main view ── -->
 <div id="classes-view" class="view hidden">
-  <div class="section-label">TODAY'S CLASSES</div>
+  <div class="date-nav">
+    <button class="date-nav-btn" id="prev-date-btn" aria-label="Previous day">‹</button>
+    <div class="date-nav-center">
+      <div class="date-nav-label" id="date-label">Today</div>
+      <div class="date-nav-sub"  id="date-sub"></div>
+    </div>
+    <button class="date-nav-btn" id="next-date-btn" aria-label="Next day">›</button>
+  </div>
+  <div class="section-label" id="section-label">TODAY'S CLASSES</div>
   <div id="classes-list"></div>
   <div id="no-classes" class="empty hidden">
     <div class="empty-icon">✅</div>
