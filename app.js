@@ -50,6 +50,100 @@ const KEYWORDS_DEFAULT = ['lecture', 'tutorial', 'lab', 'practical'];
 const LOOK_AHEAD_HRS   = 12;
 const CALENDAR_API     = 'https://www.googleapis.com/calendar/v3';
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Firestore (appointment reminders)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const FIRESTORE_API = 'https://firestore.googleapis.com/v1/projects/appointmentappstud/databases/(default)/documents';
+
+// Fetch approved upcoming appointments for a given email using Firestore REST API
+async function fetchAppointments(email, targetDate = null) {
+  try {
+    let timeMin, timeMax;
+    if (targetDate) {
+      const start = new Date(targetDate); start.setHours(0, 0, 0, 0);
+      const end   = new Date(targetDate); end.setHours(23, 59, 59, 999);
+      timeMin = start.toISOString();
+      timeMax = end.toISOString();
+    } else {
+      const now = new Date();
+      timeMin = now.toISOString();
+      timeMax = new Date(now.getTime() + LOOK_AHEAD_HRS * 3_600_000).toISOString();
+    }
+
+    // Firestore structured query via REST
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId: 'appointments' }],
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              { fieldFilter: { field: { fieldPath: 'studentEmail' }, op: 'EQUAL', value: { stringValue: email } } },
+              { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } } },
+            ],
+          },
+        },
+      },
+    };
+
+    const res = await fetch(`${FIRESTORE_API}:runQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return [];
+    const rows = await res.json();
+
+    const appts = [];
+    for (const row of rows) {
+      if (!row.document) continue;
+      const f = row.document.fields || {};
+      const startTs = f.start?.timestampValue;
+      const endTs   = f.end?.timestampValue;
+      if (!startTs) continue;
+
+      const startDate = new Date(startTs);
+      const endDate   = endTs ? new Date(endTs) : null;
+      const startIso  = startDate.toISOString();
+
+      // Filter to the requested time window
+      if (startIso < timeMin || startIso > timeMax) continue;
+
+      appts.push({
+        _isAppointment: true,
+        id:       row.document.name.split('/').pop(),
+        summary:  f.type?.stringValue || 'Appointment',
+        start:    { dateTime: startIso },
+        end:      endDate ? { dateTime: endDate.toISOString() } : undefined,
+        location: f.location?.stringValue || '',
+        description: f.notes?.stringValue || '',
+        refCode:  f.refCode?.stringValue || '',
+        apptType: f.type?.stringValue || '',
+      });
+    }
+    return appts;
+  } catch (e) {
+    console.warn('[App] Appointments fetch failed:', e.message);
+    return [];
+  }
+}
+
+// Get the signed-in Google account email from the People API
+async function getGoogleEmail(token) {
+  const cached = await dbGet('userEmail');
+  if (cached) return cached;
+  try {
+    const res  = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (data.email) { await dbSet('userEmail', data.email); return data.email; }
+  } catch (_) {}
+  return null;
+}
+
 const THEMES = {
   lecture:   { icon: '📚', iconBg: 'rgba(37,99,235,.25)',  badgeBg: '#2563eb', accent: '#60a5fa' },
   tutorial:  { icon: '✏️', iconBg: 'rgba(22,163,74,.25)',  badgeBg: '#16a34a', accent: '#4ade80' },
@@ -132,7 +226,7 @@ async function signIn() {
     response_type: 'token',
     client_id:     clientId,
     redirect_uri:  getRedirectUri(),
-    scope:         'https://www.googleapis.com/auth/calendar.readonly',
+    scope:         'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email',
     prompt:        'consent',
   });
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -141,6 +235,7 @@ async function signIn() {
 async function signOut() {
   await dbRemove('tokenData');
   await dbRemove('firedReminders');
+  await dbRemove('userEmail');
   clearPolling();
   $('auth-note').textContent = '';
   $('status-label').textContent = 'Not signed in';
@@ -246,7 +341,12 @@ async function checkAndRemind() {
 
   let events;
   try {
-    events = await fetchEvents(token);
+    const email = await getGoogleEmail(token);
+    const [classEvents, apptEvents] = await Promise.all([
+      fetchEvents(token),
+      email ? fetchAppointments(email) : Promise.resolve([]),
+    ]);
+    events = [...classEvents, ...apptEvents];
   } catch (e) {
     console.warn('[App] Calendar fetch failed:', e.message);
     return;
@@ -405,7 +505,19 @@ async function loadClasses(token, targetDate = null) {
   updateDateNav();
 
   try {
-    const events = await fetchEvents(token, targetDate);
+    const email = await getGoogleEmail(token);
+    const [classEvents, apptEvents] = await Promise.all([
+      fetchEvents(token, targetDate),
+      email ? fetchAppointments(email, targetDate) : Promise.resolve([]),
+    ]);
+
+    // Merge and sort by start time
+    const events = [...classEvents, ...apptEvents].sort((a, b) => {
+      const aT = a.start?.dateTime ? new Date(a.start.dateTime) : 0;
+      const bT = b.start?.dateTime ? new Date(b.start.dateTime) : 0;
+      return aT - bT;
+    });
+
     list.innerHTML = '';
 
     if (events.length === 0) {
@@ -436,15 +548,28 @@ async function loadClasses(token, targetDate = null) {
         : '';
 
       const card = document.createElement('div');
-      card.className = `class-card ${type}${isPast ? ' past' : ''}`;
-      card.innerHTML = `
-        <div class="card-dot"></div>
-        <div style="flex:1;min-width:0">
-          <div class="card-title">${escapeHtml(title)}${badgeHtml}</div>
-          ${timeStr ? `<div class="card-time">🕐 ${timeStr}</div>` : ''}
-          ${loc      ? `<div class="card-loc">📍 ${escapeHtml(loc)}</div>` : ''}
-        </div>
-        <div class="card-chevron">›</div>`;
+      if (ev._isAppointment) {
+        card.className = `class-card appointment${isPast ? ' past' : ''}`;
+        card.innerHTML = `
+          <div class="card-dot" style="background:#0891b2"></div>
+          <div style="flex:1;min-width:0">
+            <div class="card-title">📅 ${escapeHtml(title)}${badgeHtml}</div>
+            ${timeStr ? `<div class="card-time">🕐 ${timeStr}</div>` : ''}
+            ${loc     ? `<div class="card-loc">📍 ${escapeHtml(loc)}</div>` : ''}
+            <div class="card-appt-tag">APPOINTMENT</div>
+          </div>
+          <div class="card-chevron">›</div>`;
+      } else {
+        card.className = `class-card ${type}${isPast ? ' past' : ''}`;
+        card.innerHTML = `
+          <div class="card-dot"></div>
+          <div style="flex:1;min-width:0">
+            <div class="card-title">${escapeHtml(title)}${badgeHtml}</div>
+            ${timeStr ? `<div class="card-time">🕐 ${timeStr}</div>` : ''}
+            ${loc      ? `<div class="card-loc">📍 ${escapeHtml(loc)}</div>` : ''}
+          </div>
+          <div class="card-chevron">›</div>`;
+      }
       card.addEventListener('click', () => showDetail(ev));
       list.appendChild(card);
     });
@@ -484,14 +609,16 @@ function updateBadges() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function showDetail(ev) {
-  const title = ev.summary || 'Class';
-  const type  = classType(title);
-  const theme = THEMES[type] || THEMES.lecture;
+  const title = ev._isAppointment ? (ev.apptType || ev.summary || 'Appointment') : (ev.summary || 'Class');
+  const type  = ev._isAppointment ? 'appointment' : classType(title);
+  const theme = ev._isAppointment
+    ? { icon: '📅', iconBg: 'rgba(8,145,178,.25)', badgeBg: '#0891b2', accent: '#22d3ee' }
+    : (THEMES[type] || THEMES.lecture);
   const now   = new Date();
 
   $('detail-icon').textContent  = theme.icon;
-  $('detail-badge').textContent = type.toUpperCase();
-  $('detail-badge').className   = `detail-badge ${type}`;
+  $('detail-badge').textContent = ev._isAppointment ? 'APPOINTMENT' : type.toUpperCase();
+  $('detail-badge').className   = `detail-badge ${ev._isAppointment ? 'appointment' : type}`;
   $('detail-title').textContent = title;
 
   const startRaw = ev.start?.dateTime;
