@@ -603,7 +603,7 @@ function updateBadges() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function showDetail(ev) {
-  const title = ev._isAppointment ? (ev.apptType || ev.summary || 'Appointment') : (ev.summary || 'Class');
+  const title = ev._isAppointment ? (ev.summary || 'Appointment') : (ev.summary || 'Class');
   const type  = ev._isAppointment ? 'appointment' : classType(title);
   const theme = ev._isAppointment
     ? { icon: '📅', iconBg: 'rgba(8,145,178,.25)', badgeBg: '#0891b2', accent: '#22d3ee' }
