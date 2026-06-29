@@ -76,13 +76,7 @@ async function fetchAppointments(email, targetDate = null) {
       structuredQuery: {
         from: [{ collectionId: 'appointments' }],
         where: {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              { fieldFilter: { field: { fieldPath: 'studentEmail' }, op: 'EQUAL', value: { stringValue: email } } },
-              { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } } },
-            ],
-          },
+          fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } },
         },
       },
     };
