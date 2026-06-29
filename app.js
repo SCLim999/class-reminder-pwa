@@ -108,7 +108,7 @@ async function fetchAppointments(email, targetDate = null) {
       appts.push({
         _isAppointment: true,
         id:       row.document.name.split('/').pop(),
-        summary:  f.type?.stringValue || 'Appointment',
+        summary:  `${f.refCode?.stringValue || 'Appointment'} · ${f.studentName?.stringValue || ''}`.trim().replace(/ · $/, ''),
         start:    { dateTime: startIso },
         end:      endDate ? { dateTime: endDate.toISOString() } : undefined,
         location: f.location?.stringValue || '',
