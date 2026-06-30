@@ -335,10 +335,9 @@ async function checkAndRemind() {
 
   let events;
   try {
-    const email = await getGoogleEmail(token);
     const [classEvents, apptEvents] = await Promise.all([
       fetchEvents(token),
-      email ? fetchAppointments(email) : Promise.resolve([]),
+      fetchAppointments(null),
     ]);
     events = [...classEvents, ...apptEvents];
   } catch (e) {
@@ -499,10 +498,9 @@ async function loadClasses(token, targetDate = null) {
   updateDateNav();
 
   try {
-    const email = await getGoogleEmail(token);
     const [classEvents, apptEvents] = await Promise.all([
       fetchEvents(token, targetDate),
-      email ? fetchAppointments(email, targetDate) : Promise.resolve([]),
+      fetchAppointments(null, targetDate),
     ]);
 
     // Merge and sort by start time
@@ -590,7 +588,8 @@ function updateBadges() {
     } else {
       const h = Math.floor(secsUntil / 3600);
       const m = Math.floor((secsUntil % 3600) / 60);
-      label = `${h}h ${m}m`;
+      const s = secsUntil % 60;
+      label = `${h}h ${m}m ${String(s).padStart(2, '0')}s`;
       soon  = false;
     }
     el.textContent = label;
